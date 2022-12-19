@@ -55,7 +55,7 @@ func TestMssqldefCreateTableQuotes(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE test_table (
-		  id integer
+		  [id] integer
 		);
 		`,
 	)
@@ -64,7 +64,7 @@ func TestMssqldefCreateTableQuotes(t *testing.T) {
 
 	createTable = stripHeredoc(`
 		CREATE TABLE test_table (
-		  id integer
+		  [id] integer
 		);
 		`,
 	)
@@ -120,7 +120,7 @@ func TestMssqldefCreateTableWithIDENTITY(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE users (
-		  id integer PRIMARY KEY IDENTITY(1,1),
+		  [id] integer PRIMARY KEY IDENTITY(1,1),
 		  name text,
 		  age integer
 		);
@@ -136,7 +136,7 @@ func TestMssqldefCreateTableWithCLUSTERED(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE users (
-		  id integer,
+		  [id] integer,
 		  name text,
 		  age integer,
 		  CONSTRAINT PK_users PRIMARY KEY CLUSTERED (id)
@@ -153,7 +153,7 @@ func TestMssqldefCreateView(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE [dbo].[users] (
-		  id integer NOT NULL,
+		  [id] integer NOT NULL,
 		  name text,
 		  age integer
 		);
@@ -978,7 +978,7 @@ func TestMssqldefDryRun(t *testing.T) {
 	resetTestDatabase()
 	writeFile("schema.sql", stripHeredoc(`
 		CREATE TABLE users (
-		  id integer NOT NULL PRIMARY KEY,
+		  [id] integer NOT NULL PRIMARY KEY,
 		  age integer
 		);`,
 	))
@@ -992,7 +992,7 @@ func TestMssqldefSkipDrop(t *testing.T) {
 	resetTestDatabase()
 	testutils.MustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
 		CREATE TABLE users (
-		    id integer NOT NULL PRIMARY KEY,
+		    [id] integer NOT NULL PRIMARY KEY,
 		    age integer
 		);`,
 	))
@@ -1011,30 +1011,30 @@ func TestMssqldefExport(t *testing.T) {
 
 	testutils.MustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    v_int int NOT NULL,
-		    v_smallmoney smallmoney,
-		    v_money money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50)
+		    [v_int] int NOT NULL,
+		    [v_smallmoney] smallmoney,
+		    [v_money] money,
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50)
 		);
 		`,
 	))
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    v_int int NOT NULL,
-		    v_smallmoney smallmoney,
-		    v_money money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50)
+		    [v_int] int NOT NULL,
+		    [v_smallmoney] smallmoney,
+		    [v_money] money,
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50)
 		);
 		`,
 	))
@@ -1045,22 +1045,22 @@ func TestMssqldefExportWithView(t *testing.T) {
 	out := assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, "-- No table exists --\n")
 
-	mustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
+	testutils.MustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    v_int int NOT NULL,
-		    v_smallmoney smallmoney,
-		    v_money money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50)
+		    [v_int] int NOT NULL,
+		    [v_smallmoney] smallmoney,
+		    [v_money] money,
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50)
 		);
 		GO
-		CREATE VIEW [dbo].[view_v1] AS select v_money from dbo.v with(nolock) where v_int = 1;
+		CREATE VIEW [dbo].[view_v1] AS select [v_money] from dbo.v with(nolock) where v_int = 1;
 		GO
-		CREATE VIEW [dbo].[view_v2] AS select v_smallmoney from dbo.v with(nolock) where v_int = 1;
+		CREATE VIEW [dbo].[view_v2] AS select [v_smallmoney] from dbo.v with(nolock) where v_int = 1;
 		GO
 		`,
 	))
@@ -1068,20 +1068,20 @@ func TestMssqldefExportWithView(t *testing.T) {
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    v_int int NOT NULL,
-		    v_smallmoney smallmoney,
-		    v_money money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50)
+		    [v_int] int NOT NULL,
+		    [v_smallmoney] smallmoney,
+		    [v_money] money,
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50)
 		);
 
-		CREATE VIEW [dbo].[view_v1] AS select v_money from dbo.v with(nolock) where v_int = 1;
+		CREATE VIEW [dbo].[view_v1] AS select [v_money] from dbo.v with(nolock) where v_int = 1;
 
-		CREATE VIEW [dbo].[view_v2] AS select v_smallmoney from dbo.v with(nolock) where v_int = 1;
+		CREATE VIEW [dbo].[view_v2] AS select [v_smallmoney] from dbo.v with(nolock) where v_int = 1;
 		`,
 	))
 }
@@ -1091,46 +1091,48 @@ func TestMssqldefExportWithIndex(t *testing.T) {
 	out := assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, "-- No table exists --\n")
 
-	mustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
+	testutils.MustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    id int NOT NULL IDENTITY(1,1),
-		    v_int int NOT NULL,
-		    no smallmoney,
-		    type money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50),
+		    [id] int NOT NULL IDENTITY(1,1),
+		    [v_int] int NOT NULL,
+		    [no] smallmoney,
+		    [type] money,
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50),
 		    CONSTRAINT [PK_v_id] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    INDEX [IX_Test1] NONCLUSTERED ([v_int]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = ON, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    INDEX [IX_Test2] NONCLUSTERED ([v_nvarchar] DESC) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = ON, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON )
 		);
 
 		CREATE NONCLUSTERED INDEX [IX_Test3] ON dbo.v ([v_nchar] DESC) INCLUDE ([v_varchar]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
+
 		CREATE NONCLUSTERED INDEX [IX_Test4] ON dbo.v ([v_datetime2] DESC) INCLUDE ([v_smalldatetime]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
 		`))
 
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.v (
-		    id int NOT NULL IDENTITY(1,1),
-		    v_int int NOT NULL,
+		    [id] int NOT NULL IDENTITY(1,1),
+		    [v_int] int NOT NULL,
 		    [no] smallmoney,
 		    [type] money,
-		    v_datetimeoffset datetimeoffset(1),
-		    v_datetime2 datetime2,
-		    v_smalldatetime smalldatetime,
-		    v_nchar nchar(30),
-		    v_varchar varchar(30),
-		    v_nvarchar nvarchar(50),
+		    [v_datetimeoffset] datetimeoffset(1),
+		    [v_datetime2] datetime2,
+		    [v_smalldatetime] smalldatetime,
+		    [v_nchar] nchar(30),
+		    [v_varchar] varchar(30),
+		    [v_nvarchar] nvarchar(50),
 		    CONSTRAINT [PK_v_id] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    INDEX [IX_Test1] NONCLUSTERED ([v_int]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = ON, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    INDEX [IX_Test2] NONCLUSTERED ([v_nvarchar] DESC) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = ON, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON )
 		);
 
 		CREATE NONCLUSTERED INDEX [IX_Test3] ON dbo.v ([v_nchar] DESC) INCLUDE ([v_varchar]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
+
 		CREATE NONCLUSTERED INDEX [IX_Test4] ON dbo.v ([v_datetime2] DESC) INCLUDE ([v_smalldatetime]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
 		`,
 	))
@@ -1141,30 +1143,30 @@ func TestMssqldefExportWithDependency(t *testing.T) {
 	out := assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, "-- No table exists --\n")
 
-	mustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
+	testutils.MustExecute("sqlcmd", "-Usa", "-P"+saPassword, "-dmssqldef_test", "-Q", stripHeredoc(`
 		CREATE TABLE dbo.c (
-            id int NOT NULL,
+            [id] int NOT NULL,
             CONSTRAINT [PK__c] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON )
         );
         
         CREATE TABLE dbo.d (
-            id int NOT NULL,
-            f_id int,
+            [id] int NOT NULL,
+            [f_id] int,
             CONSTRAINT [PK__d] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
             CONSTRAINT [FK_d] FOREIGN KEY ([f_id]) REFERENCES dbo.c ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION
         );
         
         CREATE TABLE dbo.a (
-            id int NOT NULL,
-            f_id int,
+            [id] int NOT NULL,
+            [f_id] int,
             CONSTRAINT [PK__a] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
             CONSTRAINT [FK_a] FOREIGN KEY ([f_id]) REFERENCES dbo.d ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION
         );
         
         CREATE TABLE dbo.b (
-            id int NOT NULL,
-            f_id int,
-            f2_id int,
+            [id] int NOT NULL,
+            [f_id] int,
+            [f2_id] int,
             CONSTRAINT [PK__b] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
             CONSTRAINT [FK_b] FOREIGN KEY ([f_id]) REFERENCES dbo.c ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION,
             CONSTRAINT [FK_b2] FOREIGN KEY ([f2_id]) REFERENCES dbo.a ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -1174,28 +1176,28 @@ func TestMssqldefExportWithDependency(t *testing.T) {
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.c (
-		    id int NOT NULL,
+		    [id] int NOT NULL,
 		    CONSTRAINT [PK__c] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON )
 		);
 			
 		CREATE TABLE dbo.d (
-		    id int NOT NULL,
-		    f_id int,
+		    [id] int NOT NULL,
+		    [f_id] int,
 		    CONSTRAINT [PK__d] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    CONSTRAINT [FK_d] FOREIGN KEY ([f_id]) REFERENCES dbo.c ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION
 		);
 
 		CREATE TABLE dbo.a (
-		    id int NOT NULL,
-		    f_id int,
+		    [id] int NOT NULL,
+		    [f_id] int,
 		    CONSTRAINT [PK__a] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    CONSTRAINT [FK_a] FOREIGN KEY ([f_id]) REFERENCES dbo.d ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION
 		);
 				
 		CREATE TABLE dbo.b (
-		    id int NOT NULL,
-		    f_id int,
-		    f2_id int,
+		    [id] int NOT NULL,
+		    [f_id] int,
+		    [f2_id] int,
 		    CONSTRAINT [PK__b] PRIMARY KEY CLUSTERED ([id]) WITH ( PAD_INDEX = OFF, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON ),
 		    CONSTRAINT [FK_b] FOREIGN KEY ([f_id]) REFERENCES dbo.c ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION,
 		    CONSTRAINT [FK_b2] FOREIGN KEY ([f2_id]) REFERENCES dbo.a ([id]) ON UPDATE NO ACTION ON DELETE NO ACTION

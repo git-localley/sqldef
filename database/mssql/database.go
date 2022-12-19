@@ -252,6 +252,7 @@ func buildDumpTableDDL(table string, columns []column, indexDefs []*indexDef, fo
 
 	fmt.Fprintf(&queryBuilder, "\n);\n")
 
+	fmt.Fprint(&queryBuilder, "\n")
 	// export index with include here
 	for _, indexDef := range indexDefs {
 		if len(indexDef.included) == 0 {
@@ -260,7 +261,7 @@ func buildDumpTableDDL(table string, columns []column, indexDefs []*indexDef, fo
 		if indexDef.primary {
 			continue
 		}
-		fmt.Fprint(&queryBuilder, "\nCREATE")
+		fmt.Fprint(&queryBuilder, "CREATE")
 		if indexDef.unique {
 			fmt.Fprint(&queryBuilder, " UNIQUE")
 		}
@@ -281,7 +282,7 @@ func buildDumpTableDDL(table string, columns []column, indexDefs []*indexDef, fo
 			}
 			fmt.Fprint(&queryBuilder, " )")
 		}
-		fmt.Fprintf(&queryBuilder, ";")
+		fmt.Fprint(&queryBuilder, ";\n")
 	}
 
 	return strings.TrimSuffix(queryBuilder.String(), "\n")
