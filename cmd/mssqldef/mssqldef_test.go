@@ -287,6 +287,44 @@ func TestMssqldefAddColumn(t *testing.T) {
 	)
 	assertApplyOutput(t, createTable, applyPrefix+"ALTER TABLE [dbo].[users] ADD [name] varchar(40);\n")
 	assertApplyOutput(t, createTable, nothingModified)
+
+	// change column type
+	createTable = stripHeredoc(`
+		CREATE TABLE users (
+			id BIGINT NOT NULL PRIMARY KEY,
+			name varchar(10)
+			);`,
+	)
+	assertApplyOutput(t, createTable, applyPrefix+"ALTER TABLE [dbo].[users] ALTER COLUMN [name] varchar(10);\n")
+	assertApplyOutput(t, createTable, nothingModified)
+}
+
+func TestMssqldefChangeColumn(t *testing.T) {
+	resetTestDatabase()
+
+	createTable := stripHeredoc(`
+		CREATE TABLE users (
+		  id int NOT NULL,
+		  name varchar(40)
+		);
+		`,
+	)
+	assertApplyOutput(t, createTable, applyPrefix+createTable)
+	assertApplyOutput(t, createTable, nothingModified)
+
+	createTable = stripHeredoc(`
+		CREATE TABLE users (
+		  id bigint NOT NULL,
+		  name char(40)
+		);
+		`,
+	)
+	assertApplyOutput(t, createTable, applyPrefix+stripHeredoc(`
+		ALTER TABLE [dbo].[users] ALTER COLUMN [id] bigint;
+		ALTER TABLE [dbo].[users] ALTER COLUMN [name] char(40);
+	`,
+	))
+	assertApplyOutput(t, createTable, nothingModified)
 }
 
 func TestMssqldefAddColumnWithIDENTITY(t *testing.T) {
@@ -1019,10 +1057,14 @@ func TestMssqldefExport(t *testing.T) {
 		    [v_smalldatetime] smalldatetime,
 		    [v_nchar] nchar(30),
 		    [v_varchar] varchar(30),
-		    [v_nvarchar] nvarchar(50)
+		    [v_nvarchar] nvarchar(50),
+		    [v_decimal38] decimal(38, 0)
 		);
+		GO
 		`,
 	))
+
+	// FIXME: decimal(38, 0) is not exported as decimal(38, 0) but decimal
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.v (
@@ -1034,10 +1076,12 @@ func TestMssqldefExport(t *testing.T) {
 		    [v_smalldatetime] smalldatetime,
 		    [v_nchar] nchar(30),
 		    [v_varchar] varchar(30),
-		    [v_nvarchar] nvarchar(50)
+		    [v_nvarchar] nvarchar(50),
+		    [v_decimal38] decimal
 		);
 		`,
 	))
+
 }
 
 func TestMssqldefExportWithView(t *testing.T) {

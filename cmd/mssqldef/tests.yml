@@ -1,7 +1,8 @@
 CreateTable:
   desired: |
     CREATE TABLE bigdata (
-      data bigint
+      data bigint,
+      decimal38 decimal(38,0)
     );
 DropTable:
   current: |
@@ -36,3 +37,41 @@ TestMssqldefMultipleIndex:
     );
     CREATE NONCLUSTERED INDEX idx1_v ON v (v_integer);
     CREATE NONCLUSTERED INDEX idx2_v ON v (v_nchar);
+TestMssqldefChangeColumnYaml:
+  current: |
+    CREATE TABLE v (
+      [v_integer] integer NOT NULL,
+      [v_nchar] nchar(30)
+    );
+  desired: |
+    CREATE TABLE v (
+      [v_integer] integer NOT NULL,
+      [v_nchar] int
+    );
+  output: |
+    ALTER TABLE [dbo].[v] ALTER COLUMN [v_nchar] int;
+TestMssqldefChangeColumnYaml2:
+  current: |
+    CREATE TABLE vv (
+      [v_integer] integer NOT NULL,
+      [v_nchar] nchar(30)
+    );
+  desired: |
+    CREATE TABLE vv (
+      [v_integer] decimal(30,0) NOT NULL,
+      [v_nchar] char(10)
+    );
+  output: |
+    ALTER TABLE [dbo].[vv] ALTER COLUMN [v_integer] decimal(30, 0);
+    ALTER TABLE [dbo].[vv] ALTER COLUMN [v_nchar] char(10);
+TestMssqldefAddColumn1:
+  desired: |
+    CREATE TABLE vv (
+      [v_decimal38] decimal(38,0) NOT NULL,
+      [v_nchar] char(10)
+    );
+  output: |
+    CREATE TABLE vv (
+      [v_decimal38] decimal(38,0) NOT NULL,
+      [v_nchar] char(10)
+    );
