@@ -292,6 +292,7 @@ type column struct {
 	Name        string
 	dataType    string
 	MaxLength   string
+	Precision   string
 	Scale       string
 	Nullable    bool
 	Identity    *identity
@@ -321,6 +322,11 @@ func (c column) getLength() (string, bool) {
 			return "", false
 		}
 		return c.Scale, true
+	case "decimal":
+		if c.Scale == "0" {
+			return c.Precision, true
+		}
+		return fmt.Sprintf("%s,%s", c.Precision, c.Scale), true
 	}
 	return "", false
 }
@@ -343,6 +349,7 @@ func (d *MssqlDatabase) getColumns(table string) ([]column, error) {
 	c.name,
 	[type_name] = tp.name,
 	c.max_length,
+	c.precision,
 	c.scale,
 	c.is_nullable,
 	c.is_identity,
@@ -370,16 +377,17 @@ WHERE c.[object_id] = OBJECT_ID('%s.%s', 'U')`, schema, table)
 	cols := []column{}
 	for rows.Next() {
 		col := column{}
-		var colName, dataType, maxLen, scale, defaultId string
+		var colName, dataType, maxLen, precision, scale, defaultId string
 		var seedValue, incrementValue, defaultName, defaultVal, checkName, checkDefinition *string
 		var isNullable, isIdentity bool
 		var identityNotForReplication, checkNotForReplication *bool
-		err = rows.Scan(&colName, &dataType, &maxLen, &scale, &isNullable, &isIdentity, &seedValue, &incrementValue, &identityNotForReplication, &defaultId, &defaultName, &defaultVal, &checkName, &checkDefinition, &checkNotForReplication)
+		err = rows.Scan(&colName, &dataType, &maxLen, &precision, &scale, &isNullable, &isIdentity, &seedValue, &incrementValue, &identityNotForReplication, &defaultId, &defaultName, &defaultVal, &checkName, &checkDefinition, &checkNotForReplication)
 		if err != nil {
 			return nil, err
 		}
 		col.Name = colName
 		col.MaxLength = maxLen
+		col.Precision = precision
 		col.Scale = scale
 		if defaultId != "0" {
 			col.DefaultName = *defaultName

@@ -1058,13 +1058,13 @@ func TestMssqldefExport(t *testing.T) {
 		    [v_nchar] nchar(30),
 		    [v_varchar] varchar(30),
 		    [v_nvarchar] nvarchar(50),
-		    [v_decimal38] decimal(38, 0)
+		    [v_decimal38] decimal(38),
+		    [v_decimal38_s8] decimal(38,8)
 		);
 		GO
 		`,
 	))
 
-	// FIXME: decimal(38, 0) is not exported as decimal(38, 0) but decimal
 	out = assertedExecute(t, "./mssqldef", "-Usa", "-P"+saPassword, "mssqldef_test", "--export")
 	assertEquals(t, out, stripHeredoc(`
 		CREATE TABLE dbo.v (
@@ -1077,7 +1077,8 @@ func TestMssqldefExport(t *testing.T) {
 		    [v_nchar] nchar(30),
 		    [v_varchar] varchar(30),
 		    [v_nvarchar] nvarchar(50),
-		    [v_decimal38] decimal
+		    [v_decimal38] decimal(38),
+		    [v_decimal38_s8] decimal(38,8)
 		);
 		`,
 	))
