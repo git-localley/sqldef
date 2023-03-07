@@ -42,7 +42,6 @@ func TestApply(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
-
 			testutils.RunTest(t, db, test, schema.GeneratorModeMssql, sqlParser, "")
 		})
 	}
@@ -136,10 +135,10 @@ func TestMssqldefCreateTableWithCLUSTERED(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE users (
-		  [id] integer,
-		  name text,
-		  age integer,
-		  CONSTRAINT PK_users PRIMARY KEY CLUSTERED (id)
+		  [id] integer NOT NULL,
+		  [name] text,
+		  [age] integer,
+		  CONSTRAINT [PK_users] PRIMARY KEY CLUSTERED ([id])
 		);
 		`,
 	)
@@ -320,7 +319,7 @@ func TestMssqldefChangeColumn(t *testing.T) {
 		`,
 	)
 	assertApplyOutput(t, createTable, applyPrefix+stripHeredoc(`
-		ALTER TABLE [dbo].[users] ALTER COLUMN [id] bigint;
+		ALTER TABLE [dbo].[users] ALTER COLUMN [id] bigint NOT NULL;
 		ALTER TABLE [dbo].[users] ALTER COLUMN [name] char(40);
 	`,
 	))
@@ -332,7 +331,7 @@ func TestMssqldefAddColumnWithIDENTITY(t *testing.T) {
 
 	createTable := stripHeredoc(`
 		CREATE TABLE users (
-		  id BIGINT NOT NULL PRIMARY KEY
+		  id BIGINT PRIMARY KEY
 		);
 		`,
 	)
@@ -341,7 +340,7 @@ func TestMssqldefAddColumnWithIDENTITY(t *testing.T) {
 
 	createTable = stripHeredoc(`
 		CREATE TABLE users (
-		  id BIGINT NOT NULL PRIMARY KEY,
+		  id BIGINT PRIMARY KEY,
 		  membership_id int IDENTITY(1,1) NOT FOR REPLICATION
 		);`,
 	)
@@ -643,7 +642,7 @@ func TestMssqldefCreateTableAddIndex(t *testing.T) {
 	)
 
 	assertApplyOutput(t, createTable, applyPrefix+
-		"CREATE UNIQUE CLUSTERED INDEX [ix_users_id] ON [dbo].[users] ([id] desc) WITH (pad_index = ON, fillfactor = 10, statistics_norecompute = ON) ON [PRIMARY];\n",
+		"CREATE UNIQUE CLUSTERED INDEX [ix_users_id] ON [dbo].[users] ([id] desc) WITH ( PAD_INDEX = ON, FILLFACTOR = 10, STATISTICS_NORECOMPUTE = ON ) ON [PRIMARY];\n",
 	)
 	assertApplyOutput(t, createTable, nothingModified)
 }
@@ -721,7 +720,7 @@ func TestMssqldefCreateTableChangeIndexDefinition(t *testing.T) {
 
 	assertApplyOutput(t, createTable, applyPrefix+
 		"DROP INDEX [ix_users_id] ON [dbo].[users];\n"+
-		"CREATE UNIQUE CLUSTERED INDEX [ix_users_id] ON [dbo].[users] ([id]) WITH (pad_index = ON, fillfactor = 10);\n",
+		"CREATE UNIQUE CLUSTERED INDEX [ix_users_id] ON [dbo].[users] ([id]) WITH ( PAD_INDEX = ON, FILLFACTOR = 10 );\n",
 	)
 	assertApplyOutput(t, createTable, nothingModified)
 }

@@ -1,0 +1,12 @@
+TestMsssqlDebug:
+  current: |
+    CREATE TABLE users (
+      id BIGINT PRIMARY KEY
+    );
+  desired: |
+    CREATE TABLE users (
+      id BIGINT PRIMARY KEY,
+      membership_id int IDENTITY(1,1) NOT FOR REPLICATION
+    );
+  output: |
+    ALTER TABLE [dbo].[users] ADD [membership_id] int IDENTITY(1,1) NOT FOR REPLICATION;

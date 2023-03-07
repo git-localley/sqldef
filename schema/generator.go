@@ -31,6 +31,35 @@ var (
 	mysqlDataTypeAliases = map[string]string{
 		"boolean": "tinyint",
 	}
+	mssqlDataTypeAliases = map[string]string{
+		"bigint":           "int64",
+		"int8":             "bigint",
+		"int64":            "bigint",
+		"binary":           "varbinary",
+		"boolean":          "bit",
+		"char":             "nchar",
+		"datetime2":        "datetime",
+		"smalldatetime":    "datetime",
+		"decimal":          "numeric",
+		"double":           "float",
+		"image":            "varbinary(max)",
+		"integer":          "int",
+		"national char":    "nchar",
+		"national text":    "ntext",
+		"numeric":          "decimal",
+		"national varchar": "nvarchar",
+		"float(24)":        "real",
+		"int2":             "smallint",
+		"money":            "smallmoney",
+		"national":         "nchar",
+		"text":             "varchar(max)",
+		"datetimeoffset":   "time",
+		"rowversion":       "timestamp",
+		"uint8":            "tinyint",
+		"byte":             "tinyint",
+		"guid":             "uniqueidentifier",
+		"varchar":          "text",
+	}
 )
 
 // This struct holds simulated schema states during GenerateIdempotentDDLs().
@@ -283,6 +312,47 @@ func (g *Generator) generateDDLsForAbsentColumn(currentTable *Table, columnName 
 func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired CreateTable) ([]string, error) {
 	ddls := []string{}
 
+	// list up modified columns
+	modifiedColumns := []Column{}
+	for _, desiredColumn := range desired.table.columns {
+		currentColumn := findColumnByName(currentTable.columns, desiredColumn.name)
+		if currentColumn == nil {
+			continue
+		}
+
+		// check if column type is different
+		if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
+			modifiedColumns = append(modifiedColumns, desiredColumn)
+		}
+	}
+
+	// list up index affected by modified columns
+	modifiedIndexes := []Index{}
+	for _, index := range currentTable.indexes {
+		for _, column := range modifiedColumns {
+
+			for _, c := range index.columns {
+				if c.column == column.name {
+					modifiedIndexes = append(modifiedIndexes, index)
+					break
+				}
+			}
+
+			// have columns on index.include
+			if containsString(index.included, column.name) {
+				modifiedIndexes = append(modifiedIndexes, index)
+				break
+			}
+		}
+	}
+
+	// if mssql then drop all indexes
+	if g.mode == GeneratorModeMssql {
+		for _, currentIndex := range modifiedIndexes {
+			ddls = append(ddls, g.generateDropIndex(desired.table.name, currentIndex.name, currentIndex.constraint))
+		}
+	}
+
 	// Examine each column
 	for i, desiredColumn := range desired.table.columns {
 		currentColumn := findColumnByName(currentTable.columns, desiredColumn.name)
@@ -425,9 +495,17 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 
 				// TODO: support adding a column's `references`
 			case GeneratorModeMssql:
-				if !g.haveSameDataType(*currentColumn, desiredColumn) {
+				if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
+
 					// Change type
-					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s", g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name), generateDataType(desiredColumn))
+					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s",
+						g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name),
+						generateDataType(desiredColumn))
+
+					nullOrNotNull := g.generateNullOrNotNull(desiredColumn)
+					if nullOrNotNull != "" {
+						ddl += " " + nullOrNotNull
+					}
 					ddls = append(ddls, ddl)
 				}
 
@@ -546,6 +624,13 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 		} else {
 			// Index not found, add index.
 			ddls = append(ddls, g.generateAddIndex(desired.table.name, desiredIndex))
+		}
+	}
+
+	// if mssql then create all indexes
+	if g.mode == GeneratorModeMssql {
+		for _, currentIndex := range modifiedIndexes {
+			ddls = append(ddls, g.generateAddIndex(desired.table.name, currentIndex))
 		}
 	}
 
@@ -953,6 +1038,46 @@ func (g *Generator) generateDDLsForAbsentIndex(currentIndex Index, currentTable 
 	return ddls, nil
 }
 
+func isNotNull(column Column) bool {
+	if column.identity != nil {
+		return true
+	}
+	if column.keyOption == ColumnKeyPrimary { // `PRIMARY KEY` implies `NOT NULL`
+		return true
+	}
+	return isExplicitlyNotNull(column)
+}
+
+func isExplicitlyNotNull(column Column) bool {
+	if column.notNull != nil && *column.notNull {
+		return true
+	}
+	return false
+}
+
+func isNull(column Column) bool {
+	if column.notNull != nil && !*column.notNull {
+		return true
+	}
+	return false
+}
+
+func (g *Generator) generateNullOrNotNull(column Column) string {
+	if g.mode == GeneratorModeMssql {
+		if isExplicitlyNotNull(column) {
+			return "NOT NULL"
+		}
+	} else {
+		if isNotNull(column) {
+			return "NOT NULL"
+		}
+	}
+	if isNull(column) {
+		return "NULL"
+	}
+	return ""
+}
+
 func generateDataType(column Column) string {
 	suffix := ""
 	if column.array {
@@ -995,10 +1120,9 @@ func (g *Generator) generateColumnDefinition(column Column, enableUnique bool) (
 		definition += fmt.Sprintf("COLLATE %s ", column.collate)
 	}
 
-	if column.identity == nil && ((column.notNull != nil && *column.notNull) || column.keyOption == ColumnKeyPrimary) {
-		definition += "NOT NULL "
-	} else if column.notNull != nil && !*column.notNull {
-		definition += "NULL "
+	nullOrNotNull := g.generateNullOrNotNull(column)
+	if nullOrNotNull != "" {
+		definition += nullOrNotNull + " "
 	}
 
 	if column.sridDef != nil && column.sridDef.value != nil {
@@ -1119,6 +1243,7 @@ func (g *Generator) generateAddIndex(table string, index Index) string {
 					partition += fmt.Sprintf(" (%s)", g.escapeSQLName(index.partition.column))
 				}
 			}
+
 		} else {
 			ddl = fmt.Sprintf("ALTER TABLE %s ADD", g.escapeTableName(table))
 
@@ -1128,7 +1253,16 @@ func (g *Generator) generateAddIndex(table string, index Index) string {
 
 			ddl += fmt.Sprintf(" %s%s", strings.ToUpper(index.indexType), clusteredOption)
 		}
-		ddl += fmt.Sprintf(" (%s)%s", strings.Join(columns, ", "), optionDefinition)
+		ddl += fmt.Sprintf(" (%s)", strings.Join(columns, ", "))
+		if len(index.included) > 0 {
+			var escapedIncluded []string
+			for _, included := range index.included {
+				escapedIncluded = append(escapedIncluded, g.escapeSQLName(included))
+			}
+
+			ddl += fmt.Sprintf(" INCLUDE (%s)", strings.Join(escapedIncluded, ", "))
+		}
+		ddl += optionDefinition
 		ddl += partition
 		return ddl
 	default:
@@ -1170,10 +1304,10 @@ func (g *Generator) generateIndexOptionDefinition(indexOptions []IndexOption) st
 				default:
 					optionValue = string(indexOption.value.raw)
 				}
-				option := fmt.Sprintf("%s = %s", indexOption.optionName, optionValue)
+				option := fmt.Sprintf("%s = %s", strings.ToUpper(indexOption.optionName), optionValue)
 				options = append(options, option)
 			}
-			optionDefinition = fmt.Sprintf(" WITH (%s)", strings.Join(options, ", "))
+			optionDefinition = fmt.Sprintf(" WITH ( %s )", strings.Join(options, ", "))
 		}
 	}
 	return optionDefinition
@@ -1410,6 +1544,16 @@ func findColumnByName(columns []Column, name string) *Column {
 	return nil
 }
 
+func findIndexBySingleColumnnName(indexes []Index, name string) *Index {
+	for _, index := range indexes {
+		// if column is the only column in the index
+		if len(index.columns) == 1 && index.columns[0].column == name {
+			return &index
+		}
+	}
+	return nil
+}
+
 func findIndexByName(indexes []Index, name string) *Index {
 	for _, index := range indexes {
 		if index.name == name {
@@ -1504,7 +1648,7 @@ func (g *Generator) haveSameColumnDefinition(current Column, desired Column) boo
 	// Not examining AUTO_INCREMENT and UNIQUE KEY because it'll be added in a later stage
 	return g.haveSameDataType(current, desired) &&
 		(current.unsigned == desired.unsigned) &&
-		((current.notNull != nil && *current.notNull) == ((desired.notNull != nil && *desired.notNull) || desired.keyOption == ColumnKeyPrimary)) && // `PRIMARY KEY` implies `NOT NULL`
+		(isNotNull(current) == isNotNull(desired)) &&
 		(current.timezone == desired.timezone) &&
 		// (current.check == desired.check) && /* workaround. CHECK handling in general should be improved later */
 		(desired.charset == "" || current.charset == desired.charset) && // detect change column only when set explicitly. TODO: can we calculate implicit charset?
@@ -1627,6 +1771,12 @@ func (g *Generator) normalizeDataType(dataType string) string {
 	}
 	if g.mode == GeneratorModeMysql {
 		alias, ok = mysqlDataTypeAliases[dataType]
+		if ok {
+			dataType = alias
+		}
+	}
+	if g.mode == GeneratorModeMssql {
+		alias, ok = mssqlDataTypeAliases[dataType]
 		if ok {
 			dataType = alias
 		}

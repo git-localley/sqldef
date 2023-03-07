@@ -56,14 +56,18 @@ TestMssqldefChangeColumnYaml2:
       [v_integer] integer NOT NULL,
       [v_nchar] nchar(30)
     );
+    CREATE NONCLUSTERED INDEX [IX_v_nchar] ON dbo.vv ([v_nchar] DESC) INCLUDE ([v_integer]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
   desired: |
     CREATE TABLE vv (
       [v_integer] decimal(30,0) NOT NULL,
       [v_nchar] char(10)
     );
+    CREATE NONCLUSTERED INDEX [IX_v_nchar] ON dbo.vv ([v_nchar] DESC) INCLUDE ([v_integer]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
   output: |
-    ALTER TABLE [dbo].[vv] ALTER COLUMN [v_integer] decimal(30, 0);
+    DROP INDEX [IX_v_nchar] ON [dbo].[vv];
+    ALTER TABLE [dbo].[vv] ALTER COLUMN [v_integer] decimal(30, 0) NOT NULL;
     ALTER TABLE [dbo].[vv] ALTER COLUMN [v_nchar] char(10);
+    CREATE NONCLUSTERED INDEX [IX_v_nchar] ON [dbo].[vv] ([v_nchar] desc) INCLUDE ([v_integer]) WITH ( PAD_INDEX = ON, IGNORE_DUP_KEY = OFF, STATISTICS_NORECOMPUTE = OFF, STATISTICS_INCREMENTAL = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON );
 TestMssqldefAddColumn1:
   desired: |
     CREATE TABLE vv (
