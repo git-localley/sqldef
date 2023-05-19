@@ -1889,7 +1889,12 @@ func NewValArgWithOpt(in []byte, opt *SQLVal) *SQLVal {
 		combined := string(in) + "(" + string(opt.Val) + ")"
 		return NewValArg([]byte(combined))
 	} else {
-		combined := string(in) + "()"
+		var combined string
+		if string(in) == "getdate" || string(in) == "getutcdate" {
+			combined = string(in) + "()"
+		} else {
+			combined = string(in)
+		}
 		return NewValArg([]byte(combined))
 	}
 }
