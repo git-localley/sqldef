@@ -1,12 +1,12 @@
-TestMsssqlDebug:
+TestMsssqlDebug1:
   current: |
-    CREATE TABLE users (
+    CREATE TABLE test_users (
       id BIGINT PRIMARY KEY
     );
   desired: |
-    CREATE TABLE users (
+    CREATE TABLE test_users (
       id BIGINT PRIMARY KEY,
-      membership_id int IDENTITY(1,1) NOT FOR REPLICATION
+      [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate()
     );
   output: |
-    ALTER TABLE [dbo].[users] ADD [membership_id] int IDENTITY(1,1) NOT FOR REPLICATION;
+    ALTER TABLE [dbo].[test_users] ADD [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate();

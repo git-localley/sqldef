@@ -495,14 +495,14 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 
 				// TODO: support adding a column's `references`
 			case GeneratorModeMssql:
-				if !g.haveSameColumnDefinitionIgnoreNullibility(*currentColumn, desiredColumn) {
+				if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
 					// Change type
 					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s",
 						g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name),
 						generateDataType(desiredColumn))
 
 					// we change nullability in a last order
-					nullOrNotNull := g.generateNullOrNotNull(*currentColumn)
+					nullOrNotNull := g.generateNullOrNotNull(desiredColumn)
 					if nullOrNotNull != "" {
 						ddl += " " + nullOrNotNull
 					}
@@ -565,20 +565,6 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 						}
 						ddls = append(ddls, ddl)
 					}
-				}
-
-				// NULL column can not be changed to NOT NULL if (default not defined)
-				if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
-					// Change type
-					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s",
-						g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name),
-						generateDataType(desiredColumn))
-
-					nullOrNotNull := g.generateNullOrNotNull(desiredColumn)
-					if nullOrNotNull != "" {
-						ddl += " " + nullOrNotNull
-					}
-					ddls = append(ddls, ddl)
 				}
 			default:
 			}
@@ -1148,7 +1134,7 @@ func (g *Generator) generateColumnDefinition(column Column, enableUnique bool) (
 	}
 
 	if column.defaultDef != nil && column.defaultDef.value != nil {
-		def, err := generateDefaultDefinition(*column.defaultDef.value)
+		def, err := generateDefaultDefinitionWithConstracts(*column.defaultDef.value, column.defaultDef.constraintName)
 		if err != nil {
 			return "", fmt.Errorf("%s in column: %#v", err.Error(), column)
 		}
@@ -2087,47 +2073,32 @@ func generateSequenceClause(sequence *Sequence) string {
 }
 
 func generateDefaultDefinition(defaultVal Value) (string, error) {
-	switch defaultVal.valueType {
-	case ValueTypeStr:
-		return fmt.Sprintf("DEFAULT '%s'", defaultVal.strVal), nil
-	case ValueTypeBool:
-		return fmt.Sprintf("DEFAULT %s", defaultVal.strVal), nil
-	case ValueTypeInt:
-		return fmt.Sprintf("DEFAULT %d", defaultVal.intVal), nil
-	case ValueTypeFloat:
-		return fmt.Sprintf("DEFAULT %f", defaultVal.floatVal), nil
-	case ValueTypeBit:
-		if defaultVal.bitVal {
-			return "DEFAULT b'1'", nil
-		} else {
-			return "DEFAULT b'0'", nil
-		}
-	case ValueTypeValArg: // NULL, CURRENT_TIMESTAMP, ...
-		return fmt.Sprintf("DEFAULT %s", string(defaultVal.raw)), nil
-	default:
-		return "", fmt.Errorf("unsupported default value type (valueType: '%d')", defaultVal.valueType)
-	}
+	return generateDefaultDefinitionWithConstracts(defaultVal, "")
 }
 
-func generateDefaultDefinitionWithConstracts(defaultDef DefaultDefinition) (string, error) {
-	defaultVal := defaultDef.Value
+func generateDefaultDefinitionWithConstracts(defaultVal Value, constraintName string) (string, error) {
+	constraintDefinition := ""
+	if constraintName != "" {
+		constraintDefinition = fmt.Sprintf("CONSTRAINT %s ", constraintName)
+	}
+
 	switch defaultVal.valueType {
 	case ValueTypeStr:
-		return fmt.Sprintf("DEFAULT '%s'", defaultVal.strVal), nil
+		return fmt.Sprintf("%sDEFAULT '%s'", constraintDefinition, defaultVal.strVal), nil
 	case ValueTypeBool:
-		return fmt.Sprintf("DEFAULT %s", defaultVal.strVal), nil
+		return fmt.Sprintf("%sDEFAULT %s", constraintDefinition, defaultVal.strVal), nil
 	case ValueTypeInt:
-		return fmt.Sprintf("DEFAULT %d", defaultVal.intVal), nil
+		return fmt.Sprintf("%sDEFAULT %d", constraintDefinition, defaultVal.intVal), nil
 	case ValueTypeFloat:
-		return fmt.Sprintf("DEFAULT %f", defaultVal.floatVal), nil
+		return fmt.Sprintf("%sDEFAULT %f", constraintDefinition, defaultVal.floatVal), nil
 	case ValueTypeBit:
 		if defaultVal.bitVal {
-			return "DEFAULT b'1'", nil
+			return fmt.Sprintf("%sDEFAULT b'1'", constraintDefinition), nil
 		} else {
-			return "DEFAULT b'0'", nil
+			return fmt.Sprintf("%sDEFAULT b'0'", constraintDefinition), nil
 		}
 	case ValueTypeValArg: // NULL, CURRENT_TIMESTAMP, ...
-		return fmt.Sprintf("DEFAULT %s", string(defaultVal.raw)), nil
+		return fmt.Sprintf("%sDEFAULT %s", constraintDefinition, string(defaultVal.raw)), nil
 	default:
 		return "", fmt.Errorf("unsupported default value type (valueType: '%d')", defaultVal.valueType)
 	}

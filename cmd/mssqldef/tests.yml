@@ -91,5 +91,17 @@ TestMsssqlAddDefaultValWithGetUtcDate:
       [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate()
     );
   output: |
-    ALTER TABLE [dbo].[test_users] ADD CONSTRAINT [DF__xxx_nft_levelup__creat__2610A626] DEFAULT getutcdate() FOR [created_at];
     ALTER TABLE [dbo].[test_users] ALTER COLUMN [created_at] datetime NOT NULL;
+    ALTER TABLE [dbo].[test_users] ADD CONSTRAINT [DF__xxx_nft_levelup__creat__2610A626] DEFAULT getutcdate() FOR [created_at];
+TestMsssqlAddColumnWithGetUtcDateConstraint:
+  current: |
+    CREATE TABLE test_users (
+      id BIGINT PRIMARY KEY
+    );
+  desired: |
+    CREATE TABLE test_users (
+      id BIGINT PRIMARY KEY,
+      [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate()
+    );
+  output: |
+    ALTER TABLE [dbo].[test_users] ADD [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate();
