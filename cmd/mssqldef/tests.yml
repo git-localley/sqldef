@@ -79,3 +79,17 @@ TestMssqldefAddColumn1:
       [v_decimal38] decimal(38,0) NOT NULL,
       [v_nchar] char(10)
     );
+TestMsssqlAddDefaultValWithGetUtcDate:
+  current: |
+    CREATE TABLE test_users (
+      id BIGINT PRIMARY KEY,
+      [created_at] datetime
+    );
+  desired: |
+    CREATE TABLE test_users (
+      id BIGINT PRIMARY KEY,
+      [created_at] datetime NOT NULL CONSTRAINT DF__xxx_nft_levelup__creat__2610A626 DEFAULT getutcdate()
+    );
+  output: |
+    ALTER TABLE [dbo].[test_users] ADD CONSTRAINT [DF__xxx_nft_levelup__creat__2610A626] DEFAULT getutcdate() FOR [created_at];
+    ALTER TABLE [dbo].[test_users] ALTER COLUMN [created_at] datetime NOT NULL;

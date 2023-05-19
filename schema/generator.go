@@ -495,14 +495,14 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 
 				// TODO: support adding a column's `references`
 			case GeneratorModeMssql:
-				if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
-
+				if !g.haveSameColumnDefinitionIgnoreNullibility(*currentColumn, desiredColumn) {
 					// Change type
 					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s",
 						g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name),
 						generateDataType(desiredColumn))
 
-					nullOrNotNull := g.generateNullOrNotNull(desiredColumn)
+					// we change nullability in a last order
+					nullOrNotNull := g.generateNullOrNotNull(*currentColumn)
 					if nullOrNotNull != "" {
 						ddl += " " + nullOrNotNull
 					}
@@ -565,6 +565,20 @@ func (g *Generator) generateDDLsForCreateTable(currentTable Table, desired Creat
 						}
 						ddls = append(ddls, ddl)
 					}
+				}
+
+				// NULL column can not be changed to NOT NULL if (default not defined)
+				if !g.haveSameColumnDefinition(*currentColumn, desiredColumn) {
+					// Change type
+					ddl := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s",
+						g.escapeTableName(desired.table.name), g.escapeSQLName(currentColumn.name),
+						generateDataType(desiredColumn))
+
+					nullOrNotNull := g.generateNullOrNotNull(desiredColumn)
+					if nullOrNotNull != "" {
+						ddl += " " + nullOrNotNull
+					}
+					ddls = append(ddls, ddl)
 				}
 			default:
 			}
@@ -1657,6 +1671,18 @@ func (g *Generator) haveSameColumnDefinition(current Column, desired Column) boo
 		reflect.DeepEqual(current.comment, desired.comment)
 }
 
+func (g *Generator) haveSameColumnDefinitionIgnoreNullibility(current Column, desired Column) bool {
+	// Not examining AUTO_INCREMENT and UNIQUE KEY because it'll be added in a later stage
+	return g.haveSameDataType(current, desired) &&
+		(current.unsigned == desired.unsigned) &&
+		(current.timezone == desired.timezone) &&
+		// (current.check == desired.check) && /* workaround. CHECK handling in general should be improved later */
+		(desired.charset == "" || current.charset == desired.charset) && // detect change column only when set explicitly. TODO: can we calculate implicit charset?
+		(desired.collate == "" || current.collate == desired.collate) && // detect change column only when set explicitly. TODO: can we calculate implicit collate?
+		reflect.DeepEqual(current.onUpdate, desired.onUpdate) &&
+		reflect.DeepEqual(current.comment, desired.comment)
+}
+
 func (g *Generator) haveSameDataType(current Column, desired Column) bool {
 	return g.normalizeDataType(current.typeName) == g.normalizeDataType(desired.typeName) &&
 		reflect.DeepEqual(current.enumValues, desired.enumValues) &&
@@ -2061,6 +2087,30 @@ func generateSequenceClause(sequence *Sequence) string {
 }
 
 func generateDefaultDefinition(defaultVal Value) (string, error) {
+	switch defaultVal.valueType {
+	case ValueTypeStr:
+		return fmt.Sprintf("DEFAULT '%s'", defaultVal.strVal), nil
+	case ValueTypeBool:
+		return fmt.Sprintf("DEFAULT %s", defaultVal.strVal), nil
+	case ValueTypeInt:
+		return fmt.Sprintf("DEFAULT %d", defaultVal.intVal), nil
+	case ValueTypeFloat:
+		return fmt.Sprintf("DEFAULT %f", defaultVal.floatVal), nil
+	case ValueTypeBit:
+		if defaultVal.bitVal {
+			return "DEFAULT b'1'", nil
+		} else {
+			return "DEFAULT b'0'", nil
+		}
+	case ValueTypeValArg: // NULL, CURRENT_TIMESTAMP, ...
+		return fmt.Sprintf("DEFAULT %s", string(defaultVal.raw)), nil
+	default:
+		return "", fmt.Errorf("unsupported default value type (valueType: '%d')", defaultVal.valueType)
+	}
+}
+
+func generateDefaultDefinitionWithConstracts(defaultDef DefaultDefinition) (string, error) {
+	defaultVal := defaultDef.Value
 	switch defaultVal.valueType {
 	case ValueTypeStr:
 		return fmt.Sprintf("DEFAULT '%s'", defaultVal.strVal), nil
