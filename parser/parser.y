@@ -201,7 +201,7 @@ func forceEOF(yylex interface{}) {
 %token <bytes> BLOB TINYBLOB MEDIUMBLOB LONGBLOB JSON JSONB ENUM
 %token <bytes> GEOMETRY POINT LINESTRING POLYGON GEOMETRYCOLLECTION MULTIPOINT MULTILINESTRING MULTIPOLYGON
 %token <bytes> VARIADIC ARRAY
-%token <bytes> NOW GETDATE
+%token <bytes> NOW GETDATE GETUTCDATE
 %token <bytes> BPCHAR
 
 // Operator Class Tokens
@@ -1577,6 +1577,10 @@ current_timestamp:
     $$ = NewValArgWithOpt($1, nil)
   }
 | GETDATE '(' ')'
+  {
+    $$ = NewValArgWithOpt($1, nil)
+  }
+| GETUTCDATE '(' ')'
   {
     $$ = NewValArgWithOpt($1, nil)
   }
@@ -4619,6 +4623,7 @@ non_reserved_keyword:
 | GEOMETRY
 | GEOMETRYCOLLECTION
 | GETDATE
+| GETUTCDATE
 | GLOBAL
 | INHERIT
 | INT

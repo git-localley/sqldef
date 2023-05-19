@@ -762,7 +762,7 @@ type DefaultDefinition struct {
 }
 
 type SridDefinition struct {
-	Value          *SQLVal
+	Value *SQLVal
 }
 
 type CheckDefinition struct {
@@ -1889,7 +1889,8 @@ func NewValArgWithOpt(in []byte, opt *SQLVal) *SQLVal {
 		combined := string(in) + "(" + string(opt.Val) + ")"
 		return NewValArg([]byte(combined))
 	} else {
-		return NewValArg(in)
+		combined := string(in) + "()"
+		return NewValArg([]byte(combined))
 	}
 }
 
