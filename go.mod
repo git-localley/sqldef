@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/google/go-cmp v0.5.9
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/lib/pq v1.10.7
@@ -40,6 +39,6 @@ require (
 )
 
 require (
-	github.com/golang/protobuf v1.4.2 // indirect
-	google.golang.org/protobuf v1.23.0 // indirect
+	github.com/golang/protobuf v1.5.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )
